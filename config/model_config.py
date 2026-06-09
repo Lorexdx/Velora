@@ -1,0 +1,10 @@
+class ModelConfig:
+    VOCAB_SIZE = 32000
+
+    EMBEDDING_DIM = 256
+
+    NUM_HEADS = 8
+
+    NUM_LAYERS = 6
+
+    NUM_SEQUENCE_LENGTH = 512
