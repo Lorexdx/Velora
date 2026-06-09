@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 import math
 import time
 
@@ -58,6 +59,17 @@ TRAINING_CONFIG = {
     "chat_corpus_path": str(CHAT_CORPUS_PATH),
     "token_cache_path": str(TOKEN_CACHE_PATH)
 }
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Fine-tune Velora on chat data.")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Ignore existing chat checkpoint and start from velora_best.pt."
+    )
+
+    return parser.parse_args()
 
 
 def build_dataloaders():
@@ -139,6 +151,7 @@ def load_base_model(model, device):
 
 
 def main():
+    args = parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(format_device(device))
 
@@ -152,13 +165,18 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     scheduler = build_scheduler(optimizer)
 
-    start_step, best_loss = load_checkpoint(
-        model=model,
-        optimizer=optimizer,
-        device=device,
-        scheduler=scheduler,
-        checkpoint_name=CHAT_LATEST_CHECKPOINT
-    )
+    if args.reset:
+        start_step = 0
+        best_loss = float("inf")
+        print("Reset fine-tuningu chatu: start z bazowego velora_best.pt")
+    else:
+        start_step, best_loss = load_checkpoint(
+            model=model,
+            optimizer=optimizer,
+            device=device,
+            scheduler=scheduler,
+            checkpoint_name=CHAT_LATEST_CHECKPOINT
+        )
 
     if start_step == 0:
         load_base_model(model, device)
