@@ -105,8 +105,35 @@ def sample_next_token(logits, temperature, top_k, top_p):
     return torch.multinomial(probabilities, num_samples=1).item()
 
 
-def generate(model, tokenizer, prompt, max_new_tokens, temperature, top_k, top_p, device):
+def trim_after_stop_sequences(text, stop_sequences):
+    if not stop_sequences:
+        return text
+
+    stop_positions = [
+        text.find(stop_sequence)
+        for stop_sequence in stop_sequences
+        if stop_sequence in text
+    ]
+
+    if not stop_positions:
+        return text
+
+    return text[:min(stop_positions)]
+
+
+def generate(
+    model,
+    tokenizer,
+    prompt,
+    max_new_tokens,
+    temperature,
+    top_k,
+    top_p,
+    device,
+    stop_sequences=None
+):
     tokens = tokenizer.encode(prompt).ids
+    prompt_length = len(prompt)
 
     for _ in range(max_new_tokens):
         context = tokens[-model.block_size:]
@@ -124,7 +151,24 @@ def generate(model, tokenizer, prompt, max_new_tokens, temperature, top_k, top_p
         )
         tokens.append(next_token_id)
 
-    return tokenizer.decode(tokens)
+        if stop_sequences:
+            generated_suffix = tokenizer.decode(tokens)[prompt_length:]
+
+            if any(stop_sequence in generated_suffix for stop_sequence in stop_sequences):
+                break
+
+    generated_text = tokenizer.decode(tokens)
+
+    if stop_sequences:
+        prefix = generated_text[:prompt_length]
+        suffix = trim_after_stop_sequences(
+            generated_text[prompt_length:],
+            stop_sequences
+        )
+
+        return f"{prefix}{suffix}"
+
+    return generated_text
 
 
 def main():
