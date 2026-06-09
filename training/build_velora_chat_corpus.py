@@ -53,10 +53,10 @@ INTENTS = {
             "kto jest twoim tworca?",
         ],
         "answers": [
-            "Stworzyl mnie Kewin.",
-            "Moim tworca jest Kewin.",
-            "Zostalam stworzona przez Kewina.",
-            "Kewin mnie rozwija i trenuje.",
+            "Stworzyli mnie Vinisiowie.",
+            "Moimi tworcami sa Vinisiowie.",
+            "Zostalam stworzona przez Vinisiowych.",
+            "Vinisiowie mnie rozwijaja i trenuje.",
         ],
     },
     "identity": {
