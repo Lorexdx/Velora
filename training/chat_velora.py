@@ -30,8 +30,8 @@ def parse_args():
     parser.add_argument("--top-p", type=float, default=0.85)
     parser.add_argument(
         "--checkpoint",
-        choices=["best", "latest"],
-        default="best"
+        choices=["best", "latest", "chat_best", "chat_latest"],
+        default="chat_best"
     )
 
     return parser.parse_args()

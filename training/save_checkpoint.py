@@ -12,6 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 LATEST_CHECKPOINT = "velora_latest.pt"
 BEST_CHECKPOINT = "velora_best.pt"
+CHAT_LATEST_CHECKPOINT = "velora_chat_latest.pt"
+CHAT_BEST_CHECKPOINT = "velora_chat_best.pt"
 
 CHECKPOINT_DIR.mkdir(exist_ok=True)
 
@@ -38,7 +40,9 @@ def save_checkpoint(
     scheduler=None,
     best_loss=None,
     config=None,
-    is_best=False
+    is_best=False,
+    latest_checkpoint_name=LATEST_CHECKPOINT,
+    best_checkpoint_name=BEST_CHECKPOINT
 ):
     best_loss = loss if best_loss is None else best_loss
     checkpoint = _checkpoint_payload(
@@ -51,12 +55,12 @@ def save_checkpoint(
         config=config
     )
 
-    latest_path = CHECKPOINT_DIR / LATEST_CHECKPOINT
+    latest_path = CHECKPOINT_DIR / latest_checkpoint_name
     torch.save(checkpoint, latest_path)
     print(format_checkpoint_saved(latest_path, step, loss))
 
     if is_best:
-        best_path = CHECKPOINT_DIR / BEST_CHECKPOINT
+        best_path = CHECKPOINT_DIR / best_checkpoint_name
         torch.save(checkpoint, best_path)
         print(format_checkpoint_saved(best_path, step, loss, is_best=True))
 

@@ -5,7 +5,13 @@ import torch
 from tokenizers import ByteLevelBPETokenizer
 
 from models.transformer import VeloraTransformer
-from training.save_checkpoint import BEST_CHECKPOINT, CHECKPOINT_DIR, LATEST_CHECKPOINT
+from training.save_checkpoint import (
+    BEST_CHECKPOINT,
+    CHAT_BEST_CHECKPOINT,
+    CHAT_LATEST_CHECKPOINT,
+    CHECKPOINT_DIR,
+    LATEST_CHECKPOINT
+)
 from training.train_velora import SEQ_LENGTH, VOCAB_SIZE
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -20,7 +26,7 @@ def parse_args():
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument(
         "--checkpoint",
-        choices=["best", "latest"],
+        choices=["best", "latest", "chat_best", "chat_latest"],
         default="best"
     )
 
@@ -28,7 +34,13 @@ def parse_args():
 
 
 def resolve_checkpoint(checkpoint_choice):
-    preferred_name = BEST_CHECKPOINT if checkpoint_choice == "best" else LATEST_CHECKPOINT
+    checkpoint_names = {
+        "best": BEST_CHECKPOINT,
+        "latest": LATEST_CHECKPOINT,
+        "chat_best": CHAT_BEST_CHECKPOINT,
+        "chat_latest": CHAT_LATEST_CHECKPOINT
+    }
+    preferred_name = checkpoint_names[checkpoint_choice]
     preferred_path = CHECKPOINT_DIR / preferred_name
 
     if preferred_path.exists():
