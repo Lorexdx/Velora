@@ -1,25 +1,27 @@
+import argparse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = PROJECT_ROOT / "data" / "final" / "velora_chat_corpus.txt"
+PLLUMIC_DATASET_NAME = "pelcra/PLLuMIC"
 
 
 INTENTS = {
     "greeting": {
         "questions": [
             "hej",
-            "czesc",
+            "cześć",
             "siema",
             "hejka",
-            "dzien dobry",
+            "dzień dobry",
             "witaj",
             "halo",
-            "jestes tam",
+            "jesteś tam",
         ],
         "answers": [
-            "Czesc. W czym moge pomoc?",
-            "Czesc. Jestem Velora. Jak moge pomoc?",
-            "Hej. Co chcesz dzisiaj zrobic?",
+            "Cześć. W czym mogę pomóc?",
+            "Cześć. Jestem Velora. Jak mogę pomóc?",
+            "Hej. Co chcesz dzisiaj zrobić?",
             "Jestem tutaj. Napisz, czego potrzebujesz.",
         ],
     },
@@ -35,28 +37,28 @@ INTENTS = {
             "przedstaw sie",
         ],
         "answers": [
-            "Mam na imie Velora.",
-            "Nazywam sie Velora.",
+            "Mam na imię Velora.",
+            "Nazywam się Velora.",
             "Jestem Velora.",
-            "Moje imie to Velora.",
+            "Moje imię to Velora.",
         ],
     },
     "creator": {
         "questions": [
-            "kto cie stworzyl?",
-            "kto cie zrobil?",
+            "kto cie stworzył?",
+            "kto cie zrobił?",
             "kto jest twoim autorem?",
-            "czy stworzyl cie Kewin?",
-            "kto pracuje nad toba?",
-            "kto cie trenuje?",
+            "czy stworzyli cie Vinisiowie?",
+            "kto pracuje nad tobą?",
+            "kto cie trenuję?",
             "kto rozwija Velore?",
-            "kto jest twoim tworca?",
+            "kto jest twoim twórcą?",
         ],
         "answers": [
             "Stworzyli mnie Vinisiowie.",
-            "Moimi tworcami sa Vinisiowie.",
-            "Zostalam stworzona przez Vinisiowych.",
-            "Vinisiowie mnie rozwijaja i trenuje.",
+            "Moimi twórcami są Vinisiowie.",
+            "Zostałam stworzona przez Vinisiowych.",
+            "Vinisiowie mnie rozwijają i trenują.",
         ],
     },
     "identity": {
@@ -71,9 +73,9 @@ INTENTS = {
         ],
         "answers": [
             "Jestem Velora, prywatne AI stworzone do rozmowy i pomocy.",
-            "Jestem prywatnym AI Kewina.",
+            "Jestem prywatnym AI Vinisiow.",
             "Jestem modelem AI o imieniu Velora.",
-            "Nie jestem czlowiekiem. Jestem AI stworzone do pomagania.",
+            "Nie jestem człowiekiem. Jestem AI stworzone do pomagania.",
         ],
     },
     "capabilities": {
@@ -87,9 +89,9 @@ INTENTS = {
             "jakie masz funkcje?",
         ],
         "answers": [
-            "Potrafie rozmawiac, odpowiadac na pytania i pomagac w prostych zadaniach.",
-            "Moge pomagac w rozmowie, nauce, kodzie i prostych wyjasnieniach.",
-            "Moge odpowiadac po polsku i pomagac krok po kroku.",
+            "Potrafię rozmawiać, odpowiadać na pytania i pomagac w prostych zadaniach.",
+            "Mogę pomagać w rozmowie, nauce, kodzie i prostych wyjasnieniach.",
+            "Mogę odpowiadać po polsku i pomagac krok po kroku.",
             "Najlepiej radze sobie z krotkimi pytaniami i prostymi wyjasnieniami.",
         ],
     },
@@ -240,6 +242,19 @@ def format_pair(user_message, velora_message):
     return f"Uzytkownik: {user_message}\nVelora: {velora_message}\n"
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Build the Velora chat corpus from PLLuMIC."
+    )
+    parser.add_argument(
+        "--include-generated",
+        action="store_true",
+        help="Also include the old locally generated prompt-response pairs."
+    )
+
+    return parser.parse_args()
+
+
 def add_pair(pairs, seen, user_message, velora_message):
     key = (user_message.strip().lower(), velora_message.strip())
 
@@ -287,17 +302,87 @@ def build_conversations():
     return pairs
 
 
+def normalize_message(text):
+    return str(text or "").replace("\r\n", "\n").strip()
+
+
+def format_pllumic_conversation(messages):
+    role_labels = {
+        "user": "Uzytkownik",
+        "prompter": "Uzytkownik",
+        "assistant": "Velora"
+    }
+    formatted_messages = []
+
+    for message in sorted(messages, key=lambda item: item.get("seq", 0)):
+        role = str(message.get("role", "")).lower()
+        label = role_labels.get(role)
+        content = normalize_message(message.get("content"))
+
+        if label and content:
+            formatted_messages.append(f"{label}: {content}")
+
+    has_user = any(line.startswith("Uzytkownik:") for line in formatted_messages)
+    has_assistant = any(line.startswith("Velora:") for line in formatted_messages)
+
+    if not has_user or not has_assistant:
+        return None
+
+    return "\n".join(formatted_messages)
+
+
+def load_pllumic_conversations():
+    try:
+        from datasets import load_dataset
+    except ImportError as error:
+        raise RuntimeError(
+            "Brak pakietu datasets. Uruchom: "
+            ".\\.venv\\Scripts\\python.exe -m pip install datasets"
+        ) from error
+
+    try:
+        dataset = load_dataset(PLLUMIC_DATASET_NAME)
+    except Exception as error:
+        raise RuntimeError(
+            "Nie udalo sie pobrac PLLuMIC. Najpierw zaakceptuj warunki na "
+            "https://huggingface.co/datasets/pelcra/PLLuMIC, a potem uruchom: "
+            ".\\.venv\\Scripts\\hf.exe auth login"
+        ) from error
+
+    conversations = []
+    seen = set()
+
+    for split in dataset.values():
+        for row in split:
+            conversation = format_pllumic_conversation(row.get("messages", []))
+
+            if conversation and conversation not in seen:
+                seen.add(conversation)
+                conversations.append(conversation)
+
+    return conversations
+
+
 def main():
+    args = parse_args()
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    pairs = build_conversations()
+    conversations = load_pllumic_conversations()
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as file:
-        for user_message, velora_message in pairs:
+        for conversation in conversations:
+            file.write(conversation)
+            file.write("\n")
+            file.write("\n")
+
+        generated_pairs = build_conversations() if args.include_generated else []
+
+        for user_message, velora_message in generated_pairs:
             file.write(format_pair(user_message, velora_message))
             file.write("\n")
 
     print(f"Zapisano: {OUTPUT_PATH}")
-    print(f"Liczba par: {len(pairs)}")
+    print(f"Rozmowy PLLuMIC: {len(conversations)}")
+    print(f"Lokalne pary: {len(generated_pairs)}")
 
 
 if __name__ == "__main__":

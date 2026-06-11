@@ -34,10 +34,12 @@ class VeloraDataset(Dataset):
         max_chars=None,
         token_cache_path=None,
         start_idx=0,
-        end_idx=None
+        end_idx=None,
+        stride=1
     ):
         self.seq_length = seq_length
         self.start_idx = start_idx
+        self.stride = stride
         self.cache_metadata = {
             "corpus": _file_metadata(corpus_path),
             "vocab": _file_metadata(vocab_path),
@@ -71,10 +73,15 @@ class VeloraDataset(Dataset):
         self.end_idx = end_idx if end_idx is not None else len(self.tokens)
 
     def __len__(self):
-        return max(0, self.end_idx - self.start_idx - self.seq_length - 1)
+        available_tokens = self.end_idx - self.start_idx
+
+        if available_tokens < self.seq_length + 1:
+            return 0
+
+        return 1 + (available_tokens - self.seq_length - 1) // self.stride
 
     def __getitem__(self, idx):
-        idx = self.start_idx + idx
+        idx = self.start_idx + idx * self.stride
         chunk = self.tokens[idx:idx + self.seq_length + 1].astype(np.int64)
         chunk = torch.from_numpy(np.asarray(chunk))
 
